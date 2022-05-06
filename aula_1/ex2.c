@@ -7,6 +7,8 @@
 #define PIN_LED 23
 const char *TAG = "input.c";
 
+#define DELAYZIN 10
+
 void app_main(void)
 {
     bool isOn = 0;
@@ -21,21 +23,48 @@ void app_main(void)
     gpio_pulldown_en(PIN_SWITCH);
     gpio_pullup_dis(PIN_SWITCH);
     int level = 0;
-
+    bool cnt = 0;
     while (1)
     {
-        level = gpio_get_level(PIN_SWITCH);
         if (gpio_get_level(PIN_SWITCH) == 1)
         {
-            isOn = !isOn;
-            gpio_set_level(PIN_LED, isOn);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            // vTaskDelay(pdMS_TO_TICKS(10));
+            if (gpio_get_level(PIN_SWITCH) == 0)
+            {
+                cnt = !cnt;
+            }
         }
-        else
+        gpio_set_level(PIN_LED, 1);
+        if (cnt == 1)
         {
-            isOn = !isOn;
-            gpio_set_level(PIN_LED, isOn);
-            vTaskDelay(pdMS_TO_TICKS(500));
+            for (int i = 0; i < 200000; i++)
+            {
+                // vTaskDelay(pdMS_TO_TICKS(DELAYZIN));
+                if (gpio_get_level(PIN_SWITCH) == 1)
+                {
+                    // vTaskDelay(pdMS_TO_TICKS(DELAYZIN));
+
+                    if (gpio_get_level(PIN_SWITCH) == 0)
+                    {
+                        cnt = !cnt;
+                    }
+                }
+            }
+
+            gpio_set_level(PIN_LED, 0);
+            for (int i = 0; i < 200000; i++)
+            {
+                // vTaskDelay(pdMS_TO_TICKS(DELAYZIN));
+                if (gpio_get_level(PIN_SWITCH) == 1)
+                {
+                    // vTaskDelay(pdMS_TO_TICKS(DELAYZIN));
+
+                    if (gpio_get_level(PIN_SWITCH) == 0)
+                    {
+                        cnt = !cnt;
+                    }
+                }
+            }
         }
     }
 }
