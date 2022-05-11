@@ -3,61 +3,58 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/queue.h"
-#include "freertos/queue.h"
-#include "driver/gpio.h"
 #include "esp_log.h"
+#include "driver/gpio.h"
+#include "freertos/semphr.h"
+xSemaphoreHandle mutexBus;
+const char *TAG = "mutex.c";
 
 #define PIN_SWITCH 15
 #define PIN_LED 23
 
-xQueueHandle queue;
+int buttonsend = 0;
+bool state = 0;
 
-int level = 0, isOn = 0;
-
-void fastf(void *params)
-{
-    int f = 0;
-    xQueueReceive(queue, &f, 0);
-    if (f == 1)
-    {
-        printf("FAST MODE");
-        while (true)
-        {
-            isOn = !isOn;
-            gpio_set_level(PIN_LED, isOn);
-            vTaskDelay(pdMS_TO_TICKS(200));
-        }
-    }
-    vTaskDelay(500 / portTICK_PERIOD_MS);
-}
-
-void slowf(void *params)
-{
-    int s = 0;
-    xQueueReceive(queue, &s, 0);
-    if (s == 0)
-    {
-        printf("SLOW MODE");
-        while (true)
-        {
-            isOn = !isOn;
-            gpio_set_level(PIN_LED, isOn);
-            vTaskDelay(pdMS_TO_TICKS(1000));
-        }
-    }
-    vTaskDelay(500 / portTICK_PERIOD_MS);
-}
-
-void buttonlvlsend(void *params)
+void buttonstatus(void *param)
 {
     while (true)
     {
-        level = gpio_get_level(PIN_SWITCH);
-        xQueueSend(queue, &level, 10);
-        printf("BOTAO PRESSIONADO");
+        int level = gpio_get_level(PIN_SWITCH);
+
+        if(level == 1){
+            xSemaphoreTake(mutexBus, 1000);
+            printf("button status = %d\n", buttonsend);
+            buttonsend = 1;
+            xSemaphoreGive(mutexBus);
+        }
+        else{
+            xSemaphoreTake(mutexBus, 1000);
+            buttonsend = 0;
+            xSemaphoreGive(mutexBus);
+        }
+        
+        vTaskDelay(250 / portTICK_PERIOD_MS);
     }
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelete(NULL);
+}
+
+void setfq(void *param){
+    while(true){
+
+        state = !state;
+
+        if(buttonsend == 1){
+            gpio_set_level(PIN_LED, state);
+            vTaskDelay(pdMS_TO_TICKS(30));
+        }
+        else{
+            gpio_set_level(PIN_LED, state);
+            vTaskDelay(pdMS_TO_TICKS(1000));
+    
+        }
+        vTaskDelay(250 / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL);
 }
 
 void app_main(void)
@@ -70,8 +67,11 @@ void app_main(void)
     gpio_set_direction(PIN_LED, GPIO_MODE_OUTPUT);
     gpio_pulldown_en(PIN_SWITCH);
     gpio_pullup_dis(PIN_SWITCH);
-    queue = xQueueCreate(3, sizeof(int));
-    xTaskCreate(&fastf, "fast frequency", 2048, NULL, 2, NULL);
-    xTaskCreate(&slowf, "slow frequency", 2048, NULL, 1, NULL);
-    xTaskCreate(&buttonlvlsend, "pin state", 2048, NULL, 1, NULL);
+
+    mutexBus = xSemaphoreCreateMutex();
+
+    xTaskCreate(&setfq, "frequency", 2048, NULL, 1, NULL);
+    xTaskCreate(&buttonstatus, "pin state", 2048, NULL, 1, NULL);
+
+
 }
