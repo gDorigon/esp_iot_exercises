@@ -21,7 +21,7 @@ void init(void)
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_APB,
     };
-    // We won't use a buffer for sending data.
+
     uart_driver_install(UART_NUM_2, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
     uart_param_config(UART_NUM_2, &uart_config);
     uart_set_pin(UART_NUM_2, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE,
@@ -45,31 +45,23 @@ static void tx_task(void *arg)
     esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
     while (c != '\n')
     {
-        // Recebe dado pela serial
         c = getchar();
 
-        // Caso a tecla seja "backspace"
         if (c == 0x08)
         {
-            // Apaga o último caracter da string
             str[((strlen(str) - 1) > 0) ? strlen(str) - 1 : 0] = c;
 
-            // Apaga o conteúdo da linha no terminal
             printf("\x1b[2K");
 
-            // Imprime conteúdo de str no terminal
             printf("\rDigite: %.*s", strlen(str), str);
         }
-        // Caso seja caracter válido
+
         else if ((c >= 0x20) && (c <= 0x7e))
         {
-            // Insere caracter na ultima posição de str
             str[strlen(str)] = c;
 
-            // Apaga o conteúdo da linha no terminal
             printf("\x1b[2K");
 
-            // Imprime conteúdo de str no terminal
             printf("\rDigite: %.*s", strlen(str), str);
         }
     }
